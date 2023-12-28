@@ -1,0 +1,60 @@
+unsigned long PREVTIM = 0;
+unsigned long RUNTIME;
+const long NECTIME = 9000;
+const long NECWAIT = 4500;
+byte inPin;
+class REC {
+    const int RCVPIN(const int a) {
+        inPin = a; 
+        return;
+    }
+    void begin() {
+        attachInterrupt(digitalPinToInterrupt(inPin) DECODE.DECSTART(), low);
+        if (inPin >=8){
+            PCICR |= B00000001;
+
+        }
+        return;
+    }
+    
+};
+class DECODE {
+public:
+
+    void DECSTART() { //turns off inturputs and starts the fuck me process
+        noInterrupts();
+        RUNTIME = millis();
+        fuckME();
+        
+    }
+private:
+    void fuckME(){ // decdies if its NEC or not if it is it goes on to decode 
+        int i = 0;
+        if(i != 2 || i == 0){
+            PREVTIM = millis();
+            i++;
+
+        }
+    while(i == 1){
+            if(digitalRead(inPin) == 1 && RUNTIME - PREVTIM >= 8900 && RUNTIME - PREVTIM <=9100) { //NEC has a intial pulls of 9mil second makes sure that true
+                NECDEC();
+                i++;
+                PREVTIM = millis();
+
+            }
+            else {
+                interrupts();
+                return;
+            }
+    }
+    }
+    void NECDEC()
+    {
+        RUNTIME = millis();
+        if(RUNTIME - PREVTIM <= 5000 && RUNTIME - PREVTIM >= 4500)
+        {
+            Serial.println("start decode");
+        }
+    }
+}; 
+    
