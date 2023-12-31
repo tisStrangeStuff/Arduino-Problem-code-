@@ -1,20 +1,15 @@
 #include <Arduino.h>
 #include <decode.h>
 const int RECV_PIN = 2;
-REC RCVPIN(RECV_PIN);
+REC RCVPIN(RECV_PIN); 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
-  REC begin();
+  Serial.begin(230400);
+  REC::begin();
 
-  int result = myFunction(2, 3);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  
 }
