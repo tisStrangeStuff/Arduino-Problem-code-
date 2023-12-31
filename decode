@@ -1,60 +1,102 @@
-unsigned long PREVTIM = 0;
+#include <Arduino.h>
+#include "signalProcess.h"
+volatile int flag = B00000000; //Used to turn off interupts after the intial signail is sent, so it can be decoded=
+unsigned long NEWINTTIM;
+unsigned long LASINTTIME;
 unsigned long RUNTIME;
+const long NECTIME_INTIALMAX = 9300; //Intial pulse of 9ms will pull pin low for 9ms, allows for error
+const long NECTIME_INTIALMIN = 8700;
+const long NECTIME_HIGHMAX = 4800; //After intial pulse ther is 4.5ms wait, then the signal starts
+const long NECTIME_HIGHMIN = 4100;
 const long NECTIME = 9000;
 const long NECWAIT = 4500;
+int step = 0; 
+BITREAD saveState(step, LASINTTIME, NEWINTTIM); 
 byte inPin;
 class REC {
-    const int RCVPIN(const int a) {
+    public:
+      REC(const int a) {
         inPin = a; 
-        return;
+
     }
-    void begin() {
-        attachInterrupt(digitalPinToInterrupt(inPin) DECODE.DECSTART(), low);
-        if (inPin >=8){
+     static void begin() {
+        if (inPin >=8 && flag == B00000000){ //Determins which Port to use for intrupts, and then sets the correspoding PCIR valve and pin mask
+            //PORT B
             PCICR |= B00000001;
+            PCMSK0 |= B00000001 << (inPin - 8);
+            
+        }
+        else{ 
+            //PORT D
+            PCICR |= B00000100;
+            PCMSK2 |= B00000001 << (inPin +1);
 
         }
-        return;
     }
-    
-};
-class DECODE {
-public:
-
-    void DECSTART() { //turns off inturputs and starts the fuck me process
-        noInterrupts();
-        RUNTIME = millis();
-        fuckME();
+    static void isNEC(){
+        NEWINTTIM = micros();
+        if(step == 0){
+            step++;
         
-    }
-private:
-    void fuckME(){ // decdies if its NEC or not if it is it goes on to decode 
-        int i = 0;
-        if(i != 2 || i == 0){
-            PREVTIM = millis();
-            i++;
-
         }
-    while(i == 1){
-            if(digitalRead(inPin) == 1 && RUNTIME - PREVTIM >= 8900 && RUNTIME - PREVTIM <=9100) { //NEC has a intial pulls of 9mil second makes sure that true
-                NECDEC();
-                i++;
-                PREVTIM = millis();
+        switch(step) {
+            case 1:
+                LASINTTIME = NEWINTTIM;
+                step++;
+                break;
+            case 2:
+                if(NEWINTTIM - LASINTTIME > NECTIME_INTIALMAX){
+                    Serial.println(NEWINTTIM - LASINTTIME);
+                    step = 0;
 
-            }
-            else {
-                interrupts();
-                return;
-            }
-    }
-    }
-    void NECDEC()
-    {
-        RUNTIME = millis();
-        if(RUNTIME - PREVTIM <= 5000 && RUNTIME - PREVTIM >= 4500)
-        {
-            Serial.println("start decode");
+                }else if (NEWINTTIM - LASINTTIME < NECTIME_INTIALMIN){
+                    step = 0;
+                    Serial.println("here");
+                } else {
+                    step++;
+                    LASINTTIME = NEWINTTIM;
+                    Serial.println("step 2");
+                }
+                break;
+            case 3: 
+                if(NEWINTTIM - LASINTTIME > NECTIME_HIGHMAX) {
+                    step = 0;
+
+                } else if(NEWINTTIM - LASINTTIME < NECTIME_HIGHMIN){
+                    step = 0;
+
+                }  else {
+                    step++;
+                    Serial.println("step 3");
+
+                }
+                break;
+            case 4:
+                Serial.println("DECODING");
+                if(isOver()){
+                    state = 0;
+                } else {
+                    BITREAD::readBit();
+                }
+                break;
         }
+
     }
-}; 
-    
+};    
+//ISRS
+ISR (PCINT0_vect) { //turns off inturputs and starts the isNEC process
+        //noInterrupts();
+ 
+     //   PCICR = flag; //Turns off the inttrupts so the signail itself doesn't trigger a inttrupt
+        // flag = B00000001;
+        REC::isNEC();
+
+
+    }
+
+ISR (PCINT2_vect) {
+
+        REC::isNEC();  // THE FUN BEGINS
+
+        
+}
